@@ -1,0 +1,508 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Smart Inventory — Base Station</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Rajdhani:wght@400;500;600&display=swap" rel="stylesheet">
+<script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyAEmaqZH2W1VxKH_UqkOv4dC_waN0iqh7k&callback=initMap" async defer></script>
+<style>
+  /* ── RESET & BASE ─────────────────────────────────────── */
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --bg:        #060d18;
+    --surface:   #0c1624;
+    --surface2:  #0f1e30;
+    --border:    #1a3a5c;
+    --accent:    #00d4ff;
+    --green:     #00ff9d;
+    --red:       #ff2d55;
+    --yellow:    #ffd166;
+    --text:      #c8dff0;
+    --text-dim:  #4a7a9b;
+    --mono:      'Share Tech Mono', monospace;
+    --ui:        'Rajdhani', sans-serif;
+    --radius:    6px;
+    --glow-cyan: 0 0 12px rgba(0,212,255,0.3);
+    --glow-green:0 0 12px rgba(0,255,157,0.3);
+    --glow-red:  0 0 12px rgba(255,45,85,0.3);
+  }
+  html, body { height: 100%; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--ui);
+    font-size: 15px;
+    line-height: 1.5;
+    min-height: 100vh;
+  }
+
+  /* ── SCAN-LINE OVERLAY ───────────────────────────────── */
+  body::before {
+    content: '';
+    position: fixed; inset: 0; pointer-events: none; z-index: 999;
+    background: repeating-linear-gradient(
+      0deg,
+      transparent,
+      transparent 2px,
+      rgba(0,0,0,0.04) 2px,
+      rgba(0,0,0,0.04) 4px
+    );
+  }
+
+  /* ── LAYOUT ──────────────────────────────────────────── */
+  .shell {
+    max-width: 1100px;
+    margin: 0 auto;
+    padding: 20px 20px 40px;
+  }
+
+  /* ── HEADER ──────────────────────────────────────────── */
+  header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 16px 20px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    margin-bottom: 16px;
+    position: relative;
+    overflow: hidden;
+  }
+  header::before {
+    content: '';
+    position: absolute; left: 0; top: 0; bottom: 0; width: 3px;
+    background: var(--accent);
+    box-shadow: var(--glow-cyan);
+  }
+  .header-left { display: flex; align-items: center; gap: 14px; }
+  .logo-mark {
+    width: 36px; height: 36px;
+    border: 1.5px solid var(--accent);
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    position: relative;
+  }
+  .logo-mark::after {
+    content: '';
+    width: 10px; height: 10px;
+    background: var(--accent);
+    border-radius: 50%;
+    box-shadow: var(--glow-cyan);
+  }
+  .logo-text { font-family: var(--mono); }
+  .logo-text .title { font-size: 16px; color: var(--accent); letter-spacing: 2px; text-transform: uppercase; }
+  .logo-text .subtitle { font-size: 11px; color: var(--text-dim); letter-spacing: 1px; text-transform: uppercase; }
+  .header-right { display: flex; align-items: center; gap: 20px; }
+  .status-pill {
+    display: flex; align-items: center; gap: 6px;
+    font-family: var(--mono); font-size: 11px;
+    color: var(--text-dim); letter-spacing: 1px;
+  }
+  .status-dot {
+    width: 7px; height: 7px; border-radius: 50%;
+    background: var(--text-dim);
+    transition: background 0.4s, box-shadow 0.4s;
+  }
+  .status-dot.live { background: var(--green); box-shadow: var(--glow-green); animation: pulse 2s infinite; }
+  .status-dot.warn { background: var(--yellow); }
+  .status-dot.dead { background: var(--red); box-shadow: var(--glow-red); }
+  #clock { font-family: var(--mono); font-size: 13px; color: var(--text-dim); }
+
+  /* ── GRID ────────────────────────────────────────────── */
+  .main-grid {
+    display: grid;
+    grid-template-columns: 340px 1fr;
+    grid-template-rows: auto auto;
+    gap: 16px;
+  }
+  .left-col { display: flex; flex-direction: column; gap: 16px; }
+  .right-col { display: flex; flex-direction: column; gap: 16px; }
+
+  /* ── PANEL BASE ──────────────────────────────────────── */
+  .panel {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    overflow: hidden;
+  }
+  .panel-head {
+    display: flex; align-items: center; gap: 10px;
+    padding: 10px 16px;
+    border-bottom: 1px solid var(--border);
+    font-family: var(--mono); font-size: 11px;
+    color: var(--text-dim); letter-spacing: 2px; text-transform: uppercase;
+  }
+  .panel-head .icon {
+    width: 6px; height: 6px; border-radius: 50%;
+    background: var(--accent); box-shadow: var(--glow-cyan);
+  }
+  .panel-body { padding: 16px; }
+
+  /* ── EQUIPMENT CARDS ─────────────────────────────────── */
+  .equip-card {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 14px 16px;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    margin-bottom: 10px;
+    transition: border-color 0.3s;
+    position: relative; overflow: hidden;
+  }
+  .equip-card:last-child { margin-bottom: 0; }
+  .equip-card::before {
+    content: '';
+    position: absolute; left: 0; top: 0; bottom: 0; width: 2px;
+    background: var(--text-dim);
+    transition: background 0.4s, box-shadow 0.4s;
+  }
+  .equip-card.present::before { background: var(--green); box-shadow: var(--glow-green); }
+  .equip-card.borrowed::before { background: var(--accent); box-shadow: var(--glow-cyan); }
+  .equip-card.missing::before  { background: var(--red);   box-shadow: var(--glow-red); }
+
+  .equip-info { display: flex; flex-direction: column; gap: 4px; }
+  .equip-name { font-size: 15px; font-weight: 600; color: #e8f4ff; letter-spacing: 0.5px; }
+  .equip-uid  { font-family: var(--mono); font-size: 11px; color: var(--text-dim); }
+
+  .equip-badge {
+    font-family: var(--mono); font-size: 11px;
+    padding: 4px 10px; border-radius: 3px;
+    border: 1px solid; letter-spacing: 1.5px; text-transform: uppercase;
+    transition: all 0.4s;
+  }
+  .badge-present  { color: var(--green);  border-color: var(--green);  background: rgba(0,255,157,0.08); }
+  .badge-borrowed { color: var(--accent); border-color: var(--accent); background: rgba(0,212,255,0.08); }
+  .badge-missing  { color: var(--red);    border-color: var(--red);    background: rgba(255,45,85,0.08); }
+
+  /* ── TELEMETRY GRID ──────────────────────────────────── */
+  .tele-grid {
+    display: grid; grid-template-columns: 1fr 1fr; gap: 10px;
+  }
+  .tele-cell {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 12px 14px;
+  }
+  .tele-label { font-size: 10px; color: var(--text-dim); letter-spacing: 1.5px; text-transform: uppercase; margin-bottom: 4px; }
+  .tele-value { font-family: var(--mono); font-size: 18px; color: var(--accent); }
+  .tele-value.small { font-size: 13px; word-break: break-all; }
+
+  /* ── LINK STATUS ─────────────────────────────────────── */
+  .link-row {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 9px 0;
+    border-bottom: 1px solid var(--border);
+    font-size: 13px;
+  }
+  .link-row:last-child { border-bottom: none; }
+  .link-name { color: var(--text-dim); }
+  .link-state {
+    font-family: var(--mono); font-size: 11px;
+    padding: 2px 8px; border-radius: 2px; letter-spacing: 1px;
+    transition: all 0.4s;
+  }
+  .link-online  { color: var(--green); border: 1px solid rgba(0,255,157,0.4); background: rgba(0,255,157,0.06); }
+  .link-offline { color: var(--red);   border: 1px solid rgba(255,45,85,0.4);  background: rgba(255,45,85,0.06); }
+
+  /* ── MAP ─────────────────────────────────────────────── */
+  #map {
+    width: 100%; height: 340px;
+    border-radius: 0 0 var(--radius) var(--radius);
+  }
+
+  /* ── ALERT BAR ───────────────────────────────────────── */
+  #alert-bar {
+    display: none;
+    padding: 10px 16px;
+    background: rgba(255,45,85,0.12);
+    border: 1px solid rgba(255,45,85,0.4);
+    border-radius: var(--radius);
+    font-family: var(--mono); font-size: 12px;
+    color: var(--red); letter-spacing: 1px;
+    margin-bottom: 16px;
+  }
+
+  /* ── LAST UPDATED ────────────────────────────────────── */
+  #last-updated {
+    font-family: var(--mono); font-size: 11px;
+    color: var(--text-dim); text-align: right;
+    margin-top: 12px; letter-spacing: 1px;
+  }
+
+  /* ── ANIMATIONS ──────────────────────────────────────── */
+  @keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50%       { opacity: 0.4; }
+  }
+
+  /* ── RESPONSIVE ──────────────────────────────────────── */
+  @media (max-width: 760px) {
+    .main-grid { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+<div class="shell">
+
+  <header>
+    <div class="header-left">
+      <div class="logo-mark"></div>
+      <div class="logo-text">
+        <div class="title">Inventory System</div>
+        <div class="subtitle">Base Station · ThingSpeak Cloud</div>
+      </div>
+    </div>
+    <div class="header-right">
+      <div class="status-pill">
+        <div class="status-dot" id="cloud-dot"></div>
+        <span id="cloud-label">CONNECTING</span>
+      </div>
+      <div id="clock">--:--:--</div>
+    </div>
+  </header>
+
+  <div id="alert-bar" role="alert"></div>
+
+  <div class="main-grid">
+
+    <!-- LEFT COLUMN -->
+    <div class="left-col">
+
+      <!-- Equipment Status -->
+      <div class="panel">
+        <div class="panel-head"><div class="icon"></div>Equipment Status</div>
+        <div class="panel-body">
+          <div class="equip-card" id="card-sigma">
+            <div class="equip-info">
+              <div class="equip-name">SIGMA 18-35MM</div>
+              <div class="equip-uid" id="sigma-uid">UID: A1B2C3D4</div>
+            </div>
+            <div class="equip-badge" id="sigma-badge">—</div>
+          </div>
+          <div class="equip-card" id="card-dji">
+            <div class="equip-info">
+              <div class="equip-name">DJI RONIN 4</div>
+              <div class="equip-uid" id="dji-uid">UID: E5F6G7H8</div>
+            </div>
+            <div class="equip-badge" id="dji-badge">—</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- GPS Telemetry -->
+      <div class="panel">
+        <div class="panel-head"><div class="icon"></div>GPS Telemetry</div>
+        <div class="panel-body">
+          <div class="tele-grid">
+            <div class="tele-cell">
+              <div class="tele-label">Latitude</div>
+              <div class="tele-value small" id="val-lat">—</div>
+            </div>
+            <div class="tele-cell">
+              <div class="tele-label">Longitude</div>
+              <div class="tele-value small" id="val-lon">—</div>
+            </div>
+            <div class="tele-cell">
+              <div class="tele-label">Status Code</div>
+              <div class="tele-value" id="val-status">—</div>
+            </div>
+            <div class="tele-cell">
+              <div class="tele-label">Last Item</div>
+              <div class="tele-value small" id="val-item">—</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Link Status -->
+      <div class="panel">
+        <div class="panel-head"><div class="icon"></div>Link Status</div>
+        <div class="panel-body" style="padding: 8px 16px;">
+          <div class="link-row">
+            <span class="link-name">ThingSpeak Cloud</span>
+            <span class="link-state link-offline" id="lnk-cloud">OFFLINE</span>
+          </div>
+          <div class="link-row">
+            <span class="link-name">Feed Entry Count</span>
+            <span class="link-state link-online" id="lnk-entry" style="border-color:var(--border);color:var(--text-dim);background:none">—</span>
+          </div>
+          <div class="link-row">
+            <span class="link-name">Channel ID</span>
+            <span class="link-state" style="border:none;color:var(--text-dim);font-family:var(--mono);font-size:11px" id="lnk-channel">—</span>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- RIGHT COLUMN -->
+    <div class="right-col">
+
+      <!-- Map -->
+      <div class="panel" style="flex:1;">
+        <div class="panel-head"><div class="icon"></div>Live Location</div>
+        <div id="map"></div>
+      </div>
+
+    </div>
+  </div>
+
+  <div id="last-updated">Last fetch: —</div>
+</div>
+
+<script>
+/* ── CONFIG — edit these ──────────────────────────────── */
+var CHANNEL_ID = 3355345;
+var READ_KEY   = 'YOUR_THINGSPEAK_READ_KEY';   // <-- your Read API Key (different from Write key)
+var POLL_MS    = 15000;
+
+/* ── RFID lookup (mirrors the ESP32 table) ───────────── */
+var RFID_NAMES = {
+  'A1B2C3D4': 'SIGMA 18-35MM',
+  'E5F6G7H8': 'DJI RONIN 4'
+};
+var STATUS_LABELS = { 0: 'PRESENT', 1: 'BORROWED', 2: 'MISSING' };
+
+/* ── MAP state ───────────────────────────────────────── */
+var map, marker, infoWindow;
+var DEFAULT_POS = { lat: 14.5905, lng: 120.9775 };
+
+function initMap() {
+  map = new google.maps.Map(document.getElementById('map'), {
+    zoom: 16,
+    center: DEFAULT_POS,
+    mapTypeId: 'roadmap',
+    styles: [
+      { elementType: 'geometry',        stylers: [{ color: '#0c1624' }] },
+      { elementType: 'labels.text.stroke', stylers: [{ color: '#060d18' }] },
+      { elementType: 'labels.text.fill',   stylers: [{ color: '#4a7a9b' }] },
+      { featureType: 'road',            elementType: 'geometry', stylers: [{ color: '#1a3a5c' }] },
+      { featureType: 'road',            elementType: 'labels.text.fill', stylers: [{ color: '#00d4ff' }] },
+      { featureType: 'water',           elementType: 'geometry', stylers: [{ color: '#060d18' }] },
+      { featureType: 'poi',             stylers: [{ visibility: 'off' }] },
+      { featureType: 'transit',         stylers: [{ visibility: 'off' }] },
+      { featureType: 'administrative',  elementType: 'geometry', stylers: [{ color: '#1a3a5c' }] }
+    ]
+  });
+  marker = new google.maps.Marker({
+    map: map,
+    title: 'Moving Unit',
+    icon: {
+      path: google.maps.SymbolPath.CIRCLE,
+      scale: 10,
+      fillColor: '#00d4ff',
+      fillOpacity: 1,
+      strokeColor: '#ffffff',
+      strokeWeight: 2
+    }
+  });
+  infoWindow = new google.maps.InfoWindow();
+  startPolling();
+}
+
+/* ── CLOCK ───────────────────────────────────────────── */
+function updateClock() {
+  var now = new Date();
+  document.getElementById('clock').textContent =
+    now.toLocaleTimeString('en-GB', { hour12: false });
+}
+setInterval(updateClock, 1000);
+updateClock();
+
+/* ── APPLY BADGE/CARD STATE ──────────────────────────── */
+function applyStatus(cardId, badgeId, statusCode, isActive) {
+  var card  = document.getElementById(cardId);
+  var badge = document.getElementById(badgeId);
+  card.classList.remove('present', 'borrowed', 'missing');
+  badge.classList.remove('badge-present', 'badge-borrowed', 'badge-missing');
+
+  if (!isActive) {
+    badge.textContent = '—';
+    return;
+  }
+  if (statusCode === 0) {
+    card.classList.add('present');  badge.classList.add('badge-present');  badge.textContent = 'PRESENT';
+  } else if (statusCode === 1) {
+    card.classList.add('borrowed'); badge.classList.add('badge-borrowed'); badge.textContent = 'BORROWED';
+  } else {
+    card.classList.add('missing');  badge.classList.add('badge-missing');  badge.textContent = 'MISSING';
+  }
+}
+
+/* ── FETCH & UPDATE ──────────────────────────────────── */
+function fetchData() {
+  var url = 'https://api.thingspeak.com/channels/' + CHANNEL_ID +
+            '/feeds/last.json?api_key=' + READ_KEY;
+  fetch(url)
+    .then(function(r) { return r.json(); })
+    .then(function(data) {
+      var lat    = parseFloat(data.field1);
+      var lon    = parseFloat(data.field2);
+      var item   = (data.field3 || '').trim();
+      var status = parseInt(data.field4);
+
+      /* Cloud status indicator */
+      document.getElementById('cloud-dot').className   = 'status-dot live';
+      document.getElementById('cloud-label').textContent = 'LIVE';
+      document.getElementById('lnk-cloud').className   = 'link-state link-online';
+      document.getElementById('lnk-cloud').textContent = 'ONLINE';
+      document.getElementById('lnk-entry').textContent = data.entry_id || '—';
+      document.getElementById('lnk-channel').textContent = CHANNEL_ID;
+
+      /* Telemetry cells */
+      document.getElementById('val-lat').textContent    = isNaN(lat)    ? '—' : lat.toFixed(6);
+      document.getElementById('val-lon').textContent    = isNaN(lon)    ? '—' : lon.toFixed(6);
+      document.getElementById('val-status').textContent = isNaN(status) ? '—' : status;
+      document.getElementById('val-item').textContent   = item || '—';
+
+      /* Map */
+      if (!isNaN(lat) && !isNaN(lon)) {
+        var pos = { lat: lat, lng: lon };
+        marker.setPosition(pos);
+        map.panTo(pos);
+        infoWindow.setContent(
+          '<div style="font-family:monospace;font-size:12px;line-height:1.8;">' +
+          '<b>' + (item || 'Unknown') + '</b><br>' +
+          'Status: ' + (STATUS_LABELS[status] || '—') + '<br>' +
+          lat.toFixed(6) + ', ' + lon.toFixed(6) +
+          '</div>'
+        );
+      }
+
+      /* Equipment cards */
+      var sigmaActive = (item === 'SIGMA 18-35MM');
+      var djiActive   = (item === 'DJI RONIN 4');
+      applyStatus('card-sigma', 'sigma-badge', status, sigmaActive);
+      applyStatus('card-dji',   'dji-badge',   status, djiActive);
+
+      /* Last updated */
+      document.getElementById('last-updated').textContent =
+        'Last fetch: ' + new Date().toLocaleTimeString('en-GB', { hour12: false }) +
+        '  ·  Entry #' + (data.entry_id || '—') +
+        '  ·  Timestamp: ' + (data.created_at || '—');
+
+      /* Alert bar (clear since OK) */
+      document.getElementById('alert-bar').style.display = 'none';
+    })
+    .catch(function(err) {
+      document.getElementById('cloud-dot').className    = 'status-dot dead';
+      document.getElementById('cloud-label').textContent = 'ERROR';
+      document.getElementById('lnk-cloud').className   = 'link-state link-offline';
+      document.getElementById('lnk-cloud').textContent = 'OFFLINE';
+      var bar = document.getElementById('alert-bar');
+      bar.style.display = 'block';
+      bar.textContent   = '[WARN] ThingSpeak fetch failed — ' + err.message;
+    });
+}
+
+function startPolling() {
+  fetchData();
+  setInterval(fetchData, POLL_MS);
+}
+</script>
+</body>
+</html>
