@@ -8,501 +8,666 @@
 <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Rajdhani:wght@400;500;600&display=swap" rel="stylesheet">
 <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyAEmaqZH2W1VxKH_UqkOv4dC_waN0iqh7k&callback=initMap" async defer></script>
 <style>
-  /* ── RESET & BASE ─────────────────────────────────────── */
-  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-  :root {
-    --bg:        #060d18;
-    --surface:   #0c1624;
-    --surface2:  #0f1e30;
-    --border:    #1a3a5c;
-    --accent:    #00d4ff;
-    --green:     #00ff9d;
-    --red:       #ff2d55;
-    --yellow:    #ffd166;
-    --text:      #c8dff0;
-    --text-dim:  #4a7a9b;
-    --mono:      'Share Tech Mono', monospace;
-    --ui:        'Rajdhani', sans-serif;
-    --radius:    6px;
-    --glow-cyan: 0 0 12px rgba(0,212,255,0.3);
-    --glow-green:0 0 12px rgba(0,255,157,0.3);
-    --glow-red:  0 0 12px rgba(255,45,85,0.3);
-  }
-  html, body { height: 100%; }
-  body {
-    background: var(--bg);
-    color: var(--text);
-    font-family: var(--ui);
-    font-size: 15px;
-    line-height: 1.5;
-    min-height: 100vh;
-  }
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+:root{
+  --bg:#060d18;--surface:#0c1624;--surface2:#0f1e30;--border:#1a3a5c;
+  --accent:#00d4ff;--green:#00ff9d;--red:#ff2d55;--yellow:#ffd166;--orange:#ff9f1c;
+  --text:#c8dff0;--text-dim:#4a7a9b;
+  --mono:'Share Tech Mono',monospace;--ui:'Rajdhani',sans-serif;--r:6px;
+  --gc:0 0 12px rgba(0,212,255,0.3);--gg:0 0 12px rgba(0,255,157,0.3);--gr:0 0 12px rgba(255,45,85,0.3);--go:0 0 12px rgba(255,159,28,0.3);
+}
+html,body{min-height:100%;}
+body{background:var(--bg);color:var(--text);font-family:var(--ui);font-size:15px;line-height:1.5;}
+body::before{content:'';position:fixed;inset:0;pointer-events:none;z-index:999;
+  background:repeating-linear-gradient(0deg,transparent,transparent 2px,rgba(0,0,0,0.04) 2px,rgba(0,0,0,0.04) 4px);}
 
-  /* ── SCAN-LINE OVERLAY ───────────────────────────────── */
-  body::before {
-    content: '';
-    position: fixed; inset: 0; pointer-events: none; z-index: 999;
-    background: repeating-linear-gradient(
-      0deg,
-      transparent,
-      transparent 2px,
-      rgba(0,0,0,0.04) 2px,
-      rgba(0,0,0,0.04) 4px
-    );
-  }
+.shell{max-width:1200px;margin:0 auto;padding:20px 20px 40px;}
 
-  /* ── LAYOUT ──────────────────────────────────────────── */
-  .shell {
-    max-width: 1100px;
-    margin: 0 auto;
-    padding: 20px 20px 40px;
-  }
+/* HEADER */
+header{display:flex;align-items:center;justify-content:space-between;padding:14px 20px;
+  background:var(--surface);border:1px solid var(--border);border-radius:var(--r);
+  margin-bottom:16px;position:relative;overflow:hidden;}
+header::before{content:'';position:absolute;left:0;top:0;bottom:0;width:3px;background:var(--accent);box-shadow:var(--gc);}
+.header-left{display:flex;align-items:center;gap:14px;}
+.logo-mark{width:36px;height:36px;border:1.5px solid var(--accent);border-radius:50%;display:flex;align-items:center;justify-content:center;}
+.logo-mark::after{content:'';width:10px;height:10px;background:var(--accent);border-radius:50%;box-shadow:var(--gc);}
+.logo-text .title{font-family:var(--mono);font-size:16px;color:var(--accent);letter-spacing:2px;text-transform:uppercase;}
+.logo-text .subtitle{font-family:var(--mono);font-size:10px;color:var(--text-dim);letter-spacing:1px;text-transform:uppercase;}
+.header-right{display:flex;align-items:center;gap:20px;}
+.status-pill{display:flex;align-items:center;gap:6px;font-family:var(--mono);font-size:11px;color:var(--text-dim);letter-spacing:1px;}
+.sdot{width:7px;height:7px;border-radius:50%;background:var(--text-dim);transition:background .4s,box-shadow .4s;flex-shrink:0;}
+.sdot.live{background:var(--green);box-shadow:var(--gg);animation:pulse 2s infinite;}
+.sdot.warn{background:var(--yellow);}
+.sdot.dead{background:var(--red);box-shadow:var(--gr);}
+#clock{font-family:var(--mono);font-size:13px;color:var(--text-dim);}
 
-  /* ── HEADER ──────────────────────────────────────────── */
-  header {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding: 16px 20px;
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-radius: var(--radius);
-    margin-bottom: 16px;
-    position: relative;
-    overflow: hidden;
-  }
-  header::before {
-    content: '';
-    position: absolute; left: 0; top: 0; bottom: 0; width: 3px;
-    background: var(--accent);
-    box-shadow: var(--glow-cyan);
-  }
-  .header-left { display: flex; align-items: center; gap: 14px; }
-  .logo-mark {
-    width: 36px; height: 36px;
-    border: 1.5px solid var(--accent);
-    border-radius: 50%;
-    display: flex; align-items: center; justify-content: center;
-    position: relative;
-  }
-  .logo-mark::after {
-    content: '';
-    width: 10px; height: 10px;
-    background: var(--accent);
-    border-radius: 50%;
-    box-shadow: var(--glow-cyan);
-  }
-  .logo-text { font-family: var(--mono); }
-  .logo-text .title { font-size: 16px; color: var(--accent); letter-spacing: 2px; text-transform: uppercase; }
-  .logo-text .subtitle { font-size: 11px; color: var(--text-dim); letter-spacing: 1px; text-transform: uppercase; }
-  .header-right { display: flex; align-items: center; gap: 20px; }
-  .status-pill {
-    display: flex; align-items: center; gap: 6px;
-    font-family: var(--mono); font-size: 11px;
-    color: var(--text-dim); letter-spacing: 1px;
-  }
-  .status-dot {
-    width: 7px; height: 7px; border-radius: 50%;
-    background: var(--text-dim);
-    transition: background 0.4s, box-shadow 0.4s;
-  }
-  .status-dot.live { background: var(--green); box-shadow: var(--glow-green); animation: pulse 2s infinite; }
-  .status-dot.warn { background: var(--yellow); }
-  .status-dot.dead { background: var(--red); box-shadow: var(--glow-red); }
-  #clock { font-family: var(--mono); font-size: 13px; color: var(--text-dim); }
+/* GRID */
+.main-grid{display:grid;grid-template-columns:370px 1fr;gap:16px;}
+.left-col,.right-col{display:flex;flex-direction:column;gap:16px;}
 
-  /* ── GRID ────────────────────────────────────────────── */
-  .main-grid {
-    display: grid;
-    grid-template-columns: 340px 1fr;
-    grid-template-rows: auto auto;
-    gap: 16px;
-  }
-  .left-col { display: flex; flex-direction: column; gap: 16px; }
-  .right-col { display: flex; flex-direction: column; gap: 16px; }
+/* PANEL */
+.panel{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);overflow:hidden;}
+.panel-head{display:flex;align-items:center;gap:10px;padding:10px 16px;
+  border-bottom:1px solid var(--border);font-family:var(--mono);font-size:11px;
+  color:var(--text-dim);letter-spacing:2px;text-transform:uppercase;}
+.ph-dot{width:6px;height:6px;border-radius:50%;background:var(--accent);box-shadow:var(--gc);flex-shrink:0;}
+.ph-right{margin-left:auto;font-size:9px;color:var(--text-dim);}
+.panel-body{padding:14px 16px;}
 
-  /* ── PANEL BASE ──────────────────────────────────────── */
-  .panel {
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-radius: var(--radius);
-    overflow: hidden;
-  }
-  .panel-head {
-    display: flex; align-items: center; gap: 10px;
-    padding: 10px 16px;
-    border-bottom: 1px solid var(--border);
-    font-family: var(--mono); font-size: 11px;
-    color: var(--text-dim); letter-spacing: 2px; text-transform: uppercase;
-  }
-  .panel-head .icon {
-    width: 6px; height: 6px; border-radius: 50%;
-    background: var(--accent); box-shadow: var(--glow-cyan);
-  }
-  .panel-body { padding: 16px; }
+/* EQUIPMENT CARDS */
+.equip-card{display:flex;align-items:center;justify-content:space-between;padding:11px 13px;
+  background:var(--surface2);border:1px solid var(--border);border-radius:var(--r);margin-bottom:8px;
+  position:relative;overflow:hidden;cursor:pointer;transition:border-color .2s,background .2s;}
+.equip-card:last-child{margin-bottom:0;}
+.equip-card::before{content:'';position:absolute;left:0;top:0;bottom:0;width:2px;background:var(--text-dim);transition:background .4s,box-shadow .4s;}
+.equip-card.present::before{background:var(--green);box-shadow:var(--gg);}
+.equip-card.borrowed::before{background:var(--orange);box-shadow:var(--go);}
+.equip-card.missing::before{background:var(--red);box-shadow:var(--gr);}
+.equip-card.selected{border-color:var(--accent);}
+.equip-card:hover{background:#111f30;}
+.equip-info{display:flex;flex-direction:column;gap:2px;}
+.equip-name{font-size:14px;font-weight:600;color:#e8f4ff;letter-spacing:.3px;}
+.equip-uid{font-family:var(--mono);font-size:10px;color:var(--text-dim);}
+.equip-uid.unassigned{color:#2a5a7c;}
+.equip-age{font-family:var(--mono);font-size:9px;color:var(--text-dim);margin-top:1px;}
+.equip-right{display:flex;flex-direction:column;align-items:flex-end;gap:4px;flex-shrink:0;}
+.equip-badge{font-family:var(--mono);font-size:10px;padding:3px 8px;border-radius:3px;border:1px solid;letter-spacing:1px;text-transform:uppercase;transition:all .4s;}
+.b-na{color:var(--text-dim);border-color:var(--border);background:transparent;}
+.b-present{color:var(--green);border-color:var(--green);background:rgba(0,255,157,.08);}
+.b-borrowed{color:var(--orange);border-color:var(--orange);background:rgba(255,159,28,.08);}
+.b-missing{color:var(--red);border-color:var(--red);background:rgba(255,45,85,.08);}
+.gps-tag{font-family:var(--mono);font-size:9px;padding:2px 5px;border-radius:2px;
+  color:var(--accent);border:1px solid rgba(0,212,255,.3);background:rgba(0,212,255,.06);letter-spacing:1px;}
 
-  /* ── EQUIPMENT CARDS ─────────────────────────────────── */
-  .equip-card {
-    display: flex; align-items: center; justify-content: space-between;
-    padding: 14px 16px;
-    background: var(--surface2);
-    border: 1px solid var(--border);
-    border-radius: var(--radius);
-    margin-bottom: 10px;
-    transition: border-color 0.3s;
-    position: relative; overflow: hidden;
-  }
-  .equip-card:last-child { margin-bottom: 0; }
-  .equip-card::before {
-    content: '';
-    position: absolute; left: 0; top: 0; bottom: 0; width: 2px;
-    background: var(--text-dim);
-    transition: background 0.4s, box-shadow 0.4s;
-  }
-  .equip-card.present::before { background: var(--green); box-shadow: var(--glow-green); }
-  .equip-card.borrowed::before { background: var(--accent); box-shadow: var(--glow-cyan); }
-  .equip-card.missing::before  { background: var(--red);   box-shadow: var(--glow-red); }
+/* TELEMETRY */
+.tele-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;}
+.tele-cell{background:var(--surface2);border:1px solid var(--border);border-radius:var(--r);padding:9px 11px;}
+.tele-lbl{font-size:9px;color:var(--text-dim);letter-spacing:1.5px;text-transform:uppercase;margin-bottom:3px;}
+.tele-val{font-family:var(--mono);font-size:16px;color:var(--accent);}
+.tele-val.sm{font-size:11px;word-break:break-all;}
+.tele-sub{font-size:9px;color:var(--text-dim);margin-top:2px;}
 
-  .equip-info { display: flex; flex-direction: column; gap: 4px; }
-  .equip-name { font-size: 15px; font-weight: 600; color: #e8f4ff; letter-spacing: 0.5px; }
-  .equip-uid  { font-family: var(--mono); font-size: 11px; color: var(--text-dim); }
+.key-box{margin-top:10px;background:var(--surface2);border:1px solid var(--border);border-radius:var(--r);padding:9px 11px;}
+.key-title{font-family:var(--mono);font-size:9px;color:var(--text-dim);letter-spacing:2px;text-transform:uppercase;margin-bottom:5px;}
+.key-row{display:flex;align-items:center;gap:7px;padding:2px 0;font-size:11px;color:var(--text-dim);}
+.key-code{font-family:var(--mono);font-size:11px;width:14px;text-align:center;font-weight:600;}
+.key-arr{color:var(--border);font-size:9px;}
+.key-name{font-weight:600;}
 
-  .equip-badge {
-    font-family: var(--mono); font-size: 11px;
-    padding: 4px 10px; border-radius: 3px;
-    border: 1px solid; letter-spacing: 1.5px; text-transform: uppercase;
-    transition: all 0.4s;
-  }
-  .badge-present  { color: var(--green);  border-color: var(--green);  background: rgba(0,255,157,0.08); }
-  .badge-borrowed { color: var(--accent); border-color: var(--accent); background: rgba(0,212,255,0.08); }
-  .badge-missing  { color: var(--red);    border-color: var(--red);    background: rgba(255,45,85,0.08); }
+/* LINK STATUS */
+.section-lbl{font-family:var(--mono);font-size:9px;color:var(--text-dim);letter-spacing:2px;text-transform:uppercase;
+  padding:7px 0 4px;border-bottom:1px solid var(--border);margin-bottom:2px;}
+.link-row{display:flex;align-items:center;justify-content:space-between;padding:6px 0;
+  border-bottom:1px solid rgba(26,58,92,.4);font-size:13px;}
+.link-row:last-of-type{border-bottom:none;}
+.link-name{color:var(--text-dim);display:flex;flex-direction:column;gap:0;}
+.link-sub{font-size:9px;color:#2a5a7c;font-family:var(--mono);}
+.ls{font-family:var(--mono);font-size:10px;padding:2px 8px;border-radius:2px;letter-spacing:1px;white-space:nowrap;transition:all .4s;}
+.ls-on{color:var(--green);border:1px solid rgba(0,255,157,.4);background:rgba(0,255,157,.06);}
+.ls-off{color:var(--red);border:1px solid rgba(255,45,85,.4);background:rgba(255,45,85,.06);}
+.ls-dim{color:var(--text-dim);border:1px solid var(--border);background:transparent;}
 
-  /* ── TELEMETRY GRID ──────────────────────────────────── */
-  .tele-grid {
-    display: grid; grid-template-columns: 1fr 1fr; gap: 10px;
-  }
-  .tele-cell {
-    background: var(--surface2);
-    border: 1px solid var(--border);
-    border-radius: var(--radius);
-    padding: 12px 14px;
-  }
-  .tele-label { font-size: 10px; color: var(--text-dim); letter-spacing: 1.5px; text-transform: uppercase; margin-bottom: 4px; }
-  .tele-value { font-family: var(--mono); font-size: 18px; color: var(--accent); }
-  .tele-value.small { font-size: 13px; word-break: break-all; }
+.note-box{margin-top:10px;padding:8px 10px;background:var(--surface2);border:1px solid var(--border);border-radius:var(--r);}
+.note-box-title{font-family:var(--mono);font-size:9px;color:var(--text-dim);letter-spacing:2px;text-transform:uppercase;margin-bottom:4px;}
+.note-box p{font-size:11px;color:var(--text-dim);line-height:1.7;}
 
-  /* ── LINK STATUS ─────────────────────────────────────── */
-  .link-row {
-    display: flex; align-items: center; justify-content: space-between;
-    padding: 9px 0;
-    border-bottom: 1px solid var(--border);
-    font-size: 13px;
-  }
-  .link-row:last-child { border-bottom: none; }
-  .link-name { color: var(--text-dim); }
-  .link-state {
-    font-family: var(--mono); font-size: 11px;
-    padding: 2px 8px; border-radius: 2px; letter-spacing: 1px;
-    transition: all 0.4s;
-  }
-  .link-online  { color: var(--green); border: 1px solid rgba(0,255,157,0.4); background: rgba(0,255,157,0.06); }
-  .link-offline { color: var(--red);   border: 1px solid rgba(255,45,85,0.4);  background: rgba(255,45,85,0.06); }
+/* MAP */
+#map-wrap{position:relative;}
+#map{width:100%;height:310px;}
+#map-empty{width:100%;height:310px;display:flex;flex-direction:column;align-items:center;justify-content:center;
+  background:var(--surface2);color:var(--text-dim);font-family:var(--mono);font-size:12px;letter-spacing:1px;gap:10px;}
+.map-empty-ring{width:36px;height:36px;border:1.5px solid var(--border);border-radius:50%;display:flex;align-items:center;justify-content:center;}
+.map-empty-ring::after{content:'';width:10px;height:10px;border-radius:50%;background:var(--border);}
 
-  /* ── MAP ─────────────────────────────────────────────── */
-  #map {
-    width: 100%; height: 340px;
-    border-radius: 0 0 var(--radius) var(--radius);
-  }
+/* GEOFENCE */
+.geo-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px;}
+.geo-cell{background:var(--surface2);border:1px solid var(--border);border-radius:var(--r);padding:8px 10px;}
+.geo-lbl{font-size:9px;color:var(--text-dim);letter-spacing:1.5px;text-transform:uppercase;margin-bottom:3px;}
+.geo-val{font-family:var(--mono);font-size:13px;color:var(--accent);}
+.divlbl{font-family:var(--mono);font-size:9px;color:var(--text-dim);letter-spacing:2px;text-transform:uppercase;
+  margin:10px 0 5px;padding-bottom:4px;border-bottom:1px solid var(--border);}
+.geo-row{display:flex;gap:6px;margin-bottom:6px;}
+.geo-in{background:var(--surface2);border:1px solid var(--border);border-radius:3px;padding:5px 8px;
+  color:var(--text);font-family:var(--mono);font-size:11px;width:100%;outline:none;transition:border-color .2s;}
+.geo-in:focus{border-color:var(--accent);}
+.geo-in::placeholder{color:var(--text-dim);}
+.gbtn{font-family:var(--mono);font-size:10px;letter-spacing:1px;text-transform:uppercase;padding:5px 11px;
+  border-radius:3px;border:1px solid;cursor:pointer;white-space:nowrap;transition:all .2s;background:transparent;}
+.gbtn-c{color:var(--accent);border-color:rgba(0,212,255,.4);}
+.gbtn-c:hover{background:rgba(0,212,255,.12);}
+.gbtn-g{color:var(--green);border-color:rgba(0,255,157,.4);}
+.gbtn-g:hover{background:rgba(0,255,157,.12);}
+.gbtn-r{color:var(--red);border-color:rgba(255,45,85,.4);}
+.gbtn-r:hover{background:rgba(255,45,85,.12);}
+.gbtn-full{width:100%;text-align:center;margin-bottom:6px;}
+.geo-confirm{display:none;font-family:var(--mono);font-size:10px;letter-spacing:1px;padding:6px 10px;border-radius:3px;margin-top:6px;}
+.gc-ok{color:var(--green);border:1px solid rgba(0,255,157,.4);background:rgba(0,255,157,.06);}
+.gc-pend{color:var(--yellow);border:1px solid rgba(255,209,102,.4);background:rgba(255,209,102,.06);}
 
-  /* ── ALERT BAR ───────────────────────────────────────── */
-  #alert-bar {
-    display: none;
-    padding: 10px 16px;
-    background: rgba(255,45,85,0.12);
-    border: 1px solid rgba(255,45,85,0.4);
-    border-radius: var(--radius);
-    font-family: var(--mono); font-size: 12px;
-    color: var(--red); letter-spacing: 1px;
-    margin-bottom: 16px;
-  }
+/* ALERT */
+#alert-bar{display:none;padding:9px 16px;background:rgba(255,45,85,.1);border:1px solid rgba(255,45,85,.4);
+  border-radius:var(--r);font-family:var(--mono);font-size:11px;color:var(--red);letter-spacing:1px;margin-bottom:16px;}
+#last-updated{font-family:var(--mono);font-size:10px;color:var(--text-dim);text-align:right;margin-top:10px;letter-spacing:1px;}
 
-  /* ── LAST UPDATED ────────────────────────────────────── */
-  #last-updated {
-    font-family: var(--mono); font-size: 11px;
-    color: var(--text-dim); text-align: right;
-    margin-top: 12px; letter-spacing: 1px;
-  }
-
-  /* ── ANIMATIONS ──────────────────────────────────────── */
-  @keyframes pulse {
-    0%, 100% { opacity: 1; }
-    50%       { opacity: 0.4; }
-  }
-
-  /* ── RESPONSIVE ──────────────────────────────────────── */
-  @media (max-width: 760px) {
-    .main-grid { grid-template-columns: 1fr; }
-  }
+@keyframes pulse{0%,100%{opacity:1;}50%{opacity:.4;}}
+@media(max-width:820px){.main-grid{grid-template-columns:1fr;}}
 </style>
 </head>
 <body>
 <div class="shell">
 
-  <header>
-    <div class="header-left">
-      <div class="logo-mark"></div>
-      <div class="logo-text">
-        <div class="title">Inventory System</div>
-        <div class="subtitle">Base Station · ThingSpeak Cloud</div>
-      </div>
+<header>
+  <div class="header-left">
+    <div class="logo-mark"></div>
+    <div class="logo-text">
+      <div class="title">Inventory System</div>
+      <div class="subtitle">Base Station &nbsp;·&nbsp; ThingSpeak Cloud</div>
     </div>
-    <div class="header-right">
-      <div class="status-pill">
-        <div class="status-dot" id="cloud-dot"></div>
-        <span id="cloud-label">CONNECTING</span>
-      </div>
-      <div id="clock">--:--:--</div>
+  </div>
+  <div class="header-right">
+    <div class="status-pill"><div class="sdot" id="cloud-dot"></div><span id="cloud-label">CONNECTING</span></div>
+    <div id="clock">--:--:--</div>
+  </div>
+</header>
+
+<div id="alert-bar"></div>
+
+<div class="main-grid">
+
+<!-- ══ LEFT ══ -->
+<div class="left-col">
+
+  <!-- Equipment Status -->
+  <div class="panel">
+    <div class="panel-head">
+      <div class="ph-dot"></div>Equipment Status
+      <div class="ph-right">CLICK CARD → VIEW MAP</div>
     </div>
-  </header>
+    <div class="panel-body">
 
-  <div id="alert-bar" role="alert"></div>
-
-  <div class="main-grid">
-
-    <!-- LEFT COLUMN -->
-    <div class="left-col">
-
-      <!-- Equipment Status -->
-      <div class="panel">
-        <div class="panel-head"><div class="icon"></div>Equipment Status</div>
-        <div class="panel-body">
-          <div class="equip-card" id="card-sigma">
-            <div class="equip-info">
-              <div class="equip-name">SIGMA 18-35MM</div>
-              <div class="equip-uid" id="sigma-uid">UID: A1B2C3D4</div>
-            </div>
-            <div class="equip-badge" id="sigma-badge">—</div>
-          </div>
-          <div class="equip-card" id="card-dji">
-            <div class="equip-info">
-              <div class="equip-name">DJI RONIN 4</div>
-              <div class="equip-uid" id="dji-uid">UID: E5F6G7H8</div>
-            </div>
-            <div class="equip-badge" id="dji-badge">—</div>
-          </div>
+      <!-- SIGMA — GPS tracked -->
+      <div class="equip-card selected" id="card-sigma" onclick="selectEquip('sigma')">
+        <div class="equip-info">
+          <div class="equip-name">SIGMA 18-35MM</div>
+          <div class="equip-uid">UID: A1B2C3D4</div>
+          <div class="equip-age" id="age-sigma">Last scan: —</div>
+        </div>
+        <div class="equip-right">
+          <div class="equip-badge b-na" id="badge-sigma">—</div>
+          <div class="gps-tag">GPS TRACKED</div>
         </div>
       </div>
 
-      <!-- GPS Telemetry -->
-      <div class="panel">
-        <div class="panel-head"><div class="icon"></div>GPS Telemetry</div>
-        <div class="panel-body">
-          <div class="tele-grid">
-            <div class="tele-cell">
-              <div class="tele-label">Latitude</div>
-              <div class="tele-value small" id="val-lat">—</div>
-            </div>
-            <div class="tele-cell">
-              <div class="tele-label">Longitude</div>
-              <div class="tele-value small" id="val-lon">—</div>
-            </div>
-            <div class="tele-cell">
-              <div class="tele-label">Status Code</div>
-              <div class="tele-value" id="val-status">—</div>
-            </div>
-            <div class="tele-cell">
-              <div class="tele-label">Last Item</div>
-              <div class="tele-value small" id="val-item">—</div>
-            </div>
-          </div>
+      <!-- DJI RONIN 4 — RFID only -->
+      <div class="equip-card" id="card-dji" onclick="selectEquip('dji')">
+        <div class="equip-info">
+          <div class="equip-name">DJI RONIN 4</div>
+          <div class="equip-uid">UID: E5F6G7H8</div>
+          <div class="equip-age" id="age-dji">Last scan: —</div>
+        </div>
+        <div class="equip-right">
+          <div class="equip-badge b-na" id="badge-dji">—</div>
         </div>
       </div>
 
-      <!-- Link Status -->
-      <div class="panel">
-        <div class="panel-head"><div class="icon"></div>Link Status</div>
-        <div class="panel-body" style="padding: 8px 16px;">
-          <div class="link-row">
-            <span class="link-name">ThingSpeak Cloud</span>
-            <span class="link-state link-offline" id="lnk-cloud">OFFLINE</span>
-          </div>
-          <div class="link-row">
-            <span class="link-name">Feed Entry Count</span>
-            <span class="link-state link-online" id="lnk-entry" style="border-color:var(--border);color:var(--text-dim);background:none">—</span>
-          </div>
-          <div class="link-row">
-            <span class="link-name">Channel ID</span>
-            <span class="link-state" style="border:none;color:var(--text-dim);font-family:var(--mono);font-size:11px" id="lnk-channel">—</span>
-          </div>
+      <!-- ZHIYUN CRANE 4 — unassigned -->
+      <div class="equip-card" id="card-zhiyun" onclick="selectEquip('zhiyun')">
+        <div class="equip-info">
+          <div class="equip-name">ZHIYUN CRANE 4</div>
+          <div class="equip-uid unassigned">UID: Not assigned</div>
+          <div class="equip-age">Last scan: —</div>
+        </div>
+        <div class="equip-right">
+          <div class="equip-badge b-na">—</div>
         </div>
       </div>
 
-    </div>
-
-    <!-- RIGHT COLUMN -->
-    <div class="right-col">
-
-      <!-- Map -->
-      <div class="panel" style="flex:1;">
-        <div class="panel-head"><div class="icon"></div>Live Location</div>
-        <div id="map"></div>
+      <!-- DJI AIR 3S — unassigned -->
+      <div class="equip-card" id="card-air3s" onclick="selectEquip('air3s')">
+        <div class="equip-info">
+          <div class="equip-name">DJI AIR 3S</div>
+          <div class="equip-uid unassigned">UID: Not assigned</div>
+          <div class="equip-age">Last scan: —</div>
+        </div>
+        <div class="equip-right">
+          <div class="equip-badge b-na">—</div>
+        </div>
       </div>
 
     </div>
   </div>
 
-  <div id="last-updated">Last fetch: —</div>
+  <!-- GPS Telemetry -->
+  <div class="panel">
+    <div class="panel-head">
+      <div class="ph-dot"></div>GPS Telemetry
+      <div class="ph-right" style="display:flex;align-items:center;gap:6px;">
+        <div class="sdot" id="gps-dot"></div>
+        <span id="gps-cloud-lbl">OFFLINE</span>
+      </div>
+    </div>
+    <div class="panel-body">
+      <div class="tele-grid">
+        <div class="tele-cell">
+          <div class="tele-lbl">Latitude</div>
+          <div class="tele-val sm" id="val-lat">—</div>
+          <div class="tele-sub" id="gps-age">Last update: —</div>
+        </div>
+        <div class="tele-cell">
+          <div class="tele-lbl">Longitude</div>
+          <div class="tele-val sm" id="val-lon">—</div>
+        </div>
+        <div class="tele-cell">
+          <div class="tele-lbl">Status Code</div>
+          <div class="tele-val" id="val-status">—</div>
+          <div class="tele-sub" id="val-status-lbl"></div>
+        </div>
+        <div class="tele-cell">
+          <div class="tele-lbl">Active RFID Item</div>
+          <div class="tele-val sm" id="val-item">—</div>
+          <div class="tele-sub" id="rfid-age">RFID update: —</div>
+        </div>
+        <div class="tele-cell" style="grid-column:1/-1;">
+          <div class="tele-lbl">Raw RFID UID &nbsp;<span style="color:var(--accent);letter-spacing:1px;">· Field 5</span></div>
+          <div class="tele-val sm" id="val-uid" style="letter-spacing:2px;">—</div>
+          <div class="tele-sub">Hex tag ID scanned by MFRC522 reader</div>
+        </div>
+      </div>
+      <!-- Status code legend -->
+      <div class="key-box">
+        <div class="key-title">Status Code Explanation</div>
+        <div class="key-row">
+          <span class="key-code" style="color:var(--green);">0</span>
+          <span class="key-arr">→</span>
+          <span class="key-name" style="color:var(--green);">PRESENT</span>
+          <span style="margin-left:6px;font-size:10px;color:var(--text-dim);">logicB = LOW · item is at base station</span>
+        </div>
+        <div class="key-row">
+          <span class="key-code" style="color:var(--orange);">1</span>
+          <span class="key-arr">→</span>
+          <span class="key-name" style="color:var(--orange);">BORROWED</span>
+          <span style="margin-left:6px;font-size:10px;color:var(--text-dim);">logicA = HIGH &amp; logicB = HIGH · checked out</span>
+        </div>
+        <div class="key-row">
+          <span class="key-code" style="color:var(--red);">2</span>
+          <span class="key-arr">→</span>
+          <span class="key-name" style="color:var(--red);">MISSING</span>
+          <span style="margin-left:6px;font-size:10px;color:var(--text-dim);">logicA = LOW &amp; logicB = HIGH · not returned</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- System Link Status -->
+  <div class="panel">
+    <div class="panel-head"><div class="ph-dot"></div>System Link Status</div>
+    <div class="panel-body" style="padding:8px 16px;">
+
+      <div class="section-lbl">Cloud Connection</div>
+      <div class="link-row">
+        <div class="link-name">ThingSpeak API
+          <span class="link-sub">api.thingspeak.com · Read channel</span>
+        </div>
+        <span class="ls ls-off" id="lnk-cloud">OFFLINE</span>
+      </div>
+      <div class="link-row">
+        <div class="link-name">Feed Entry #
+          <span class="link-sub">most recent entry received</span>
+        </div>
+        <span class="ls ls-dim" id="lnk-entry">—</span>
+      </div>
+
+      <div class="section-lbl" style="margin-top:8px;">RFID Sub-system</div>
+      <div class="link-row">
+        <div class="link-name">Base ESP32 → Cloud
+          <span class="link-sub">ThingSpeak data received</span>
+        </div>
+        <span class="ls ls-dim" id="lnk-rfid-cloud">—</span>
+      </div>
+      <div class="link-row">
+        <div class="link-name">ATmega328P (UNO) ↔ ESP32
+          <span class="link-sub">UART · RFID reader board</span>
+        </div>
+        <span class="ls ls-dim" id="lnk-uno">—</span>
+      </div>
+
+      <div class="section-lbl" style="margin-top:8px;">GPS Sub-system</div>
+      <div class="link-row">
+        <div class="link-name">Moving ESP32 → Cloud
+          <span class="link-sub">via ESP-NOW → base → ThingSpeak</span>
+        </div>
+        <span class="ls ls-dim" id="lnk-gps-cloud">—</span>
+      </div>
+      <div class="link-row">
+        <div class="link-name">ATmega328P (NANO) ↔ ESP32
+          <span class="link-sub">UART · GPS moving unit board</span>
+        </div>
+        <span class="ls ls-dim" id="lnk-nano">—</span>
+      </div>
+
+      <div class="section-lbl" style="margin-top:8px;">Info</div>
+      <div class="link-row">
+        <div class="link-name">Channel ID</div>
+        <span style="font-family:var(--mono);font-size:11px;color:var(--text-dim);" id="lnk-channel">—</span>
+      </div>
+
+      <div class="note-box" style="margin-top:10px;">
+        <div class="note-box-title">Link Status Guide</div>
+        <p>
+          <b style="color:var(--green);">ONLINE / LINKED</b> — data received in last 30 s.<br>
+          <b style="color:var(--red);">OFFLINE / NO SIGNAL</b> — timeout exceeded or no data.<br>
+          <b style="color:var(--text-dim);">ATmega328P</b> is the microcontroller chip on the Arduino UNO (RFID board) and Arduino Nano (GPS moving unit). Each sends heartbeat packets to its paired ESP32 over UART. If the UART link breaks, the ESP32 stops receiving sensor data.
+        </p>
+      </div>
+
+    </div>
+  </div>
+
 </div>
 
+<!-- ══ RIGHT ══ -->
+<div class="right-col">
+
+  <!-- Live Location Map -->
+  <div class="panel">
+    <div class="panel-head">
+      <div class="ph-dot"></div>
+      <span id="map-title">Live Location</span>
+    </div>
+    <div id="map-empty">
+      <div class="map-empty-ring"></div>
+      <span>Select an equipment card to view its location</span>
+      <span style="font-size:10px;color:#2a5a7c;">Only SIGMA 18-35MM has a GPS module</span>
+    </div>
+    <div id="map" style="display:none;"></div>
+  </div>
+
+  <!-- Geofence Controls -->
+  <div class="panel">
+    <div class="panel-head">
+      <div class="ph-dot"></div>Geofence Controls
+      <div class="ph-right">SIGMA 18-35MM · GPS UNIT ONLY</div>
+    </div>
+    <div class="panel-body">
+
+      <!-- Current values -->
+      <div class="geo-grid">
+        <div class="geo-cell">
+          <div class="geo-lbl">Center Latitude</div>
+          <div class="geo-val" id="geo-lat">14.590507</div>
+        </div>
+        <div class="geo-cell">
+          <div class="geo-lbl">Center Longitude</div>
+          <div class="geo-val" id="geo-lon">120.977518</div>
+        </div>
+        <div class="geo-cell">
+          <div class="geo-lbl">Radius</div>
+          <div class="geo-val" id="geo-rad">50 m</div>
+        </div>
+        <div class="geo-cell">
+          <div class="geo-lbl">Last Confirmed</div>
+          <div class="geo-val" style="font-size:11px;" id="geo-confirmed">—</div>
+        </div>
+      </div>
+
+      <!-- Set to current GPS -->
+      <button class="gbtn gbtn-c gbtn-full" onclick="geoSetCurrent()">
+        ▸ Set center to current GPS coordinates
+      </button>
+
+      <!-- Manual center -->
+      <div class="divlbl">Manual Center Input</div>
+      <div class="geo-row">
+        <input class="geo-in" type="number" id="in-lat" placeholder="Latitude  (e.g. 14.590507)" step="0.000001">
+        <input class="geo-in" type="number" id="in-lon" placeholder="Longitude  (e.g. 120.977518)" step="0.000001">
+      </div>
+      <button class="gbtn gbtn-g gbtn-full" onclick="geoSetManual()">Apply Manual Center</button>
+
+      <!-- Radius -->
+      <div class="divlbl">Radius</div>
+      <div class="geo-row">
+        <input class="geo-in" type="number" id="in-rad" placeholder="Radius in meters (1 – 10000)" min="1" max="10000">
+        <button class="gbtn gbtn-c" onclick="geoSetRadius()">Set Radius</button>
+      </div>
+
+      <!-- Reset -->
+      <button class="gbtn gbtn-r gbtn-full" style="margin-top:4px;" onclick="geoReset()">Reset to Default</button>
+
+      <!-- Confirmation bar -->
+      <div class="geo-confirm" id="geo-confirm"></div>
+
+      <div class="note-box" style="margin-top:10px;">
+        <div class="note-box-title">How it works</div>
+        <p>
+          Changes here update the map circle visually and log the confirmed time. To push geofence changes to the ESP32, commands are sent via the existing ESP-NOW relay (Field 5 or serial). The GPS unit triggers an alert when SIGMA 18-35MM exits the circle. Default: 14.590507, 120.977518 · 50 m.
+        </p>
+      </div>
+
+    </div>
+  </div>
+
+</div>
+</div><!-- /main-grid -->
+
+<div id="last-updated">Last fetch: —</div>
+</div><!-- /shell -->
+
 <script>
-/* ── CONFIG — edit these ──────────────────────────────── */
 var CHANNEL_ID = 3355345;
-var READ_KEY   = 'L97H5HH8DGJWJDKT';   // <-- your Read API Key (different from Write key)
+var READ_KEY   = 'YOUR_THINGSPEAK_READ_KEY';
 var POLL_MS    = 15000;
 
-/* ── RFID lookup (mirrors the ESP32 table) ───────────── */
-var RFID_NAMES = {
-  'A1B2C3D4': 'SIGMA 18-35MM',
-  'E5F6G7H8': 'DJI RONIN 4'
+var EQUIP = {
+  sigma:  { name:'SIGMA 18-35MM', uid:'A1B2C3D4', gps:true  },
+  dji:    { name:'DJI RONIN 4',   uid:'E5F6G7H8', gps:false },
+  zhiyun: { name:'ZHIYUN CRANE 4',uid:null,       gps:false },
+  air3s:  { name:'DJI AIR 3S',    uid:null,       gps:false }
 };
-var STATUS_LABELS = { 0: 'PRESENT', 1: 'BORROWED', 2: 'MISSING' };
+var STATUS_LABELS = {0:'PRESENT',1:'BORROWED',2:'MISSING'};
+var DEFAULT_POS   = {lat:14.590507,lng:120.977518};
 
-/* ── MAP state ───────────────────────────────────────── */
-var map, marker, infoWindow;
-var DEFAULT_POS = { lat: 14.5905, lng: 120.9775 };
+var selectedEquip = 'sigma';
+var lastLat=NaN, lastLon=NaN, lastStatus=NaN, lastItem='';
+var lastGpsTime=null, lastRfidTime=null;
+var geoCenter={lat:DEFAULT_POS.lat,lng:DEFAULT_POS.lng}, geoRadius=50;
+var map, marker, geoCircle, infoWin, mapReady=false;
 
-function initMap() {
-  map = new google.maps.Map(document.getElementById('map'), {
-    zoom: 16,
-    center: DEFAULT_POS,
-    mapTypeId: 'roadmap',
-    styles: [
-      { elementType: 'geometry',        stylers: [{ color: '#0c1624' }] },
-      { elementType: 'labels.text.stroke', stylers: [{ color: '#060d18' }] },
-      { elementType: 'labels.text.fill',   stylers: [{ color: '#4a7a9b' }] },
-      { featureType: 'road',            elementType: 'geometry', stylers: [{ color: '#1a3a5c' }] },
-      { featureType: 'road',            elementType: 'labels.text.fill', stylers: [{ color: '#00d4ff' }] },
-      { featureType: 'water',           elementType: 'geometry', stylers: [{ color: '#060d18' }] },
-      { featureType: 'poi',             stylers: [{ visibility: 'off' }] },
-      { featureType: 'transit',         stylers: [{ visibility: 'off' }] },
-      { featureType: 'administrative',  elementType: 'geometry', stylers: [{ color: '#1a3a5c' }] }
+/* ── MAP INIT ── */
+function initMap(){
+  map = new google.maps.Map(document.getElementById('map'),{
+    zoom:16,center:DEFAULT_POS,mapTypeId:'roadmap',
+    styles:[
+      {elementType:'geometry',stylers:[{color:'#0c1624'}]},
+      {elementType:'labels.text.stroke',stylers:[{color:'#060d18'}]},
+      {elementType:'labels.text.fill',stylers:[{color:'#4a7a9b'}]},
+      {featureType:'road',elementType:'geometry',stylers:[{color:'#1a3a5c'}]},
+      {featureType:'road',elementType:'labels.text.fill',stylers:[{color:'#00d4ff'}]},
+      {featureType:'water',elementType:'geometry',stylers:[{color:'#060d18'}]},
+      {featureType:'poi',stylers:[{visibility:'off'}]},
+      {featureType:'transit',stylers:[{visibility:'off'}]},
+      {featureType:'administrative',elementType:'geometry',stylers:[{color:'#1a3a5c'}]}
     ]
   });
-  marker = new google.maps.Marker({
-    map: map,
-    title: 'Moving Unit',
-    icon: {
-      path: google.maps.SymbolPath.CIRCLE,
-      scale: 10,
-      fillColor: '#00d4ff',
-      fillOpacity: 1,
-      strokeColor: '#ffffff',
-      strokeWeight: 2
-    }
-  });
-  infoWindow = new google.maps.InfoWindow();
+  marker = new google.maps.Marker({map:map,title:'SIGMA 18-35MM',
+    icon:{path:google.maps.SymbolPath.CIRCLE,scale:10,fillColor:'#00d4ff',fillOpacity:1,strokeColor:'#fff',strokeWeight:2}});
+  geoCircle = new google.maps.Circle({map:map,center:DEFAULT_POS,radius:geoRadius,
+    fillColor:'#00d4ff',fillOpacity:0.07,strokeColor:'#00d4ff',strokeOpacity:0.4,strokeWeight:1.5});
+  infoWin = new google.maps.InfoWindow();
+  marker.addListener('click',function(){ infoWin.open(map,marker); });
+  mapReady=true;
   startPolling();
 }
 
-/* ── CLOCK ───────────────────────────────────────────── */
-function updateClock() {
-  var now = new Date();
-  document.getElementById('clock').textContent =
-    now.toLocaleTimeString('en-GB', { hour12: false });
-}
-setInterval(updateClock, 1000);
-updateClock();
+/* ── CLOCK ── */
+function tick(){ document.getElementById('clock').textContent=new Date().toLocaleTimeString('en-GB',{hour12:false}); }
+setInterval(tick,1000); tick();
 
-/* ── APPLY BADGE/CARD STATE ──────────────────────────── */
-function applyStatus(cardId, badgeId, statusCode, isActive) {
-  var card  = document.getElementById(cardId);
-  var badge = document.getElementById(badgeId);
-  card.classList.remove('present', 'borrowed', 'missing');
-  badge.classList.remove('badge-present', 'badge-borrowed', 'badge-missing');
-
-  if (!isActive) {
-    badge.textContent = '—';
-    return;
-  }
-  if (statusCode === 0) {
-    card.classList.add('present');  badge.classList.add('badge-present');  badge.textContent = 'PRESENT';
-  } else if (statusCode === 1) {
-    card.classList.add('borrowed'); badge.classList.add('badge-borrowed'); badge.textContent = 'BORROWED';
+/* ── EQUIP SELECTION ── */
+function selectEquip(key){
+  selectedEquip=key;
+  ['sigma','dji','zhiyun','air3s'].forEach(function(k){
+    document.getElementById('card-'+k).classList.toggle('selected',k===key);
+  });
+  var eq=EQUIP[key];
+  var mapEl=document.getElementById('map'), emEl=document.getElementById('map-empty');
+  document.getElementById('map-title').textContent='Live Location of '+eq.name;
+  if(eq.gps){
+    mapEl.style.display='block'; emEl.style.display='none';
+    if(mapReady){ google.maps.event.trigger(map,'resize'); if(!isNaN(lastLat)) map.panTo({lat:lastLat,lng:lastLon}); }
   } else {
-    card.classList.add('missing');  badge.classList.add('badge-missing');  badge.textContent = 'MISSING';
+    mapEl.style.display='none'; emEl.style.display='flex';
+    var note=emEl.querySelectorAll('span');
+    note[0].textContent='No GPS module assigned to this equipment';
+    note[1].textContent= eq.uid ? 'RFID tracking only · '+eq.uid : 'UID not assigned · no GPS module';
   }
 }
 
-/* ── FETCH & UPDATE ──────────────────────────────────── */
-function fetchData() {
-  var url = 'https://api.thingspeak.com/channels/' + CHANNEL_ID +
-            '/feeds/last.json?api_key=' + READ_KEY;
-  fetch(url)
-    .then(function(r) { return r.json(); })
-    .then(function(data) {
-      var lat    = parseFloat(data.field1);
-      var lon    = parseFloat(data.field2);
-      var item   = (data.field3 || '').trim();
-      var status = parseInt(data.field4);
+/* ── BADGE ── */
+function applyBadge(cardId,badgeId,statusCode,isActive){
+  var card=document.getElementById(cardId), badge=document.getElementById(badgeId);
+  card.classList.remove('present','borrowed','missing');
+  badge.className='equip-badge b-na';
+  if(!isActive){badge.textContent='—';return;}
+  if(statusCode===0){card.classList.add('present');  badge.className='equip-badge b-present';  badge.textContent='PRESENT';}
+  else if(statusCode===1){card.classList.add('borrowed');badge.className='equip-badge b-borrowed';badge.textContent='BORROWED';}
+  else{card.classList.add('missing'); badge.className='equip-badge b-missing'; badge.textContent='MISSING';}
+}
 
-      /* Cloud status indicator */
-      document.getElementById('cloud-dot').className   = 'status-dot live';
-      document.getElementById('cloud-label').textContent = 'LIVE';
-      document.getElementById('lnk-cloud').className   = 'link-state link-online';
-      document.getElementById('lnk-cloud').textContent = 'ONLINE';
-      document.getElementById('lnk-entry').textContent = data.entry_id || '—';
-      document.getElementById('lnk-channel').textContent = CHANNEL_ID;
+/* ── TIME AGO ── */
+function ago(ts){
+  if(!ts) return '—';
+  var s=Math.floor((Date.now()-ts)/1000);
+  if(s<5) return 'just now';
+  if(s<60) return s+'s ago';
+  if(s<3600) return Math.floor(s/60)+'m ago';
+  return Math.floor(s/3600)+'h ago';
+}
 
-      /* Telemetry cells */
-      document.getElementById('val-lat').textContent    = isNaN(lat)    ? '—' : lat.toFixed(6);
-      document.getElementById('val-lon').textContent    = isNaN(lon)    ? '—' : lon.toFixed(6);
-      document.getElementById('val-status').textContent = isNaN(status) ? '—' : status;
-      document.getElementById('val-item').textContent   = item || '—';
+/* ── LINK HELPER ── */
+function setLink(id,online,label){
+  var el=document.getElementById(id);
+  el.className='ls '+(online?'ls-on':'ls-off');
+  el.textContent=label||(online?'ONLINE':'OFFLINE');
+}
+
+/* ── FETCH ── */
+function fetchData(){
+  fetch('https://api.thingspeak.com/channels/'+CHANNEL_ID+'/feeds/last.json?api_key='+READ_KEY)
+    .then(function(r){return r.json();})
+    .then(function(d){
+      var lat=parseFloat(d.field1), lon=parseFloat(d.field2);
+      var item=(d.field3||'').trim(), status=parseInt(d.field4);
+      var rawUid=(d.field5||'').trim();
+      if(!isNaN(lat)&&!isNaN(lon)){lastLat=lat;lastLon=lon;lastGpsTime=Date.now();}
+      if(item){lastItem=item;lastRfidTime=Date.now();}
+      lastStatus=status;
+
+      /* Header */
+      document.getElementById('cloud-dot').className='sdot live';
+      document.getElementById('cloud-label').textContent='LIVE';
+
+      /* GPS telemetry */
+      document.getElementById('val-lat').textContent=isNaN(lat)?'—':lat.toFixed(6);
+      document.getElementById('val-lon').textContent=isNaN(lon)?'—':lon.toFixed(6);
+      document.getElementById('val-status').textContent=isNaN(status)?'—':status;
+      document.getElementById('val-status').style.color=status===0?'var(--green)':status===1?'var(--orange)':'var(--red)';
+      document.getElementById('val-status-lbl').textContent=STATUS_LABELS[status]||'';
+      document.getElementById('val-item').textContent=item||'—';
+      document.getElementById('val-uid').textContent=rawUid||'—';
+
+      /* GPS cloud dot */
+      var gpsOk=!isNaN(lat)&&!isNaN(lon);
+      document.getElementById('gps-dot').className='sdot '+(gpsOk?'live':'dead');
+      document.getElementById('gps-cloud-lbl').textContent=gpsOk?'ONLINE':'NO FIX';
+
+      /* Equipment badges */
+      applyBadge('card-sigma','badge-sigma',status,item==='SIGMA 18-35MM');
+      applyBadge('card-dji','badge-dji',status,item==='DJI RONIN 4');
+
+      /* Link rows */
+      setLink('lnk-cloud',true);
+      setLink('lnk-rfid-cloud',!isNaN(status),!isNaN(status)?'ONLINE':'NO DATA');
+      setLink('lnk-gps-cloud',gpsOk,gpsOk?'ONLINE':'NO FIX');
+      setLink('lnk-uno',!!item,item?'LINKED':'NO SIGNAL');
+      setLink('lnk-nano',gpsOk,gpsOk?'LINKED':'NO SIGNAL');
+      document.getElementById('lnk-entry').textContent=d.entry_id||'—';
+      document.getElementById('lnk-channel').textContent=CHANNEL_ID;
 
       /* Map */
-      if (!isNaN(lat) && !isNaN(lon)) {
-        var pos = { lat: lat, lng: lon };
+      if(mapReady&&!isNaN(lat)&&!isNaN(lon)){
+        var pos={lat:lat,lng:lon};
         marker.setPosition(pos);
-        map.panTo(pos);
-        infoWindow.setContent(
-          '<div style="font-family:monospace;font-size:12px;line-height:1.8;">' +
-          '<b>' + (item || 'Unknown') + '</b><br>' +
-          'Status: ' + (STATUS_LABELS[status] || '—') + '<br>' +
-          lat.toFixed(6) + ', ' + lon.toFixed(6) +
-          '</div>'
-        );
+        if(selectedEquip==='sigma') map.panTo(pos);
+        infoWin.setContent('<div style="font-family:monospace;font-size:12px;line-height:1.9;color:#111;"><b>'+(item||'Unknown')+'</b><br>Status: '+(STATUS_LABELS[status]||'—')+'<br>'+lat.toFixed(6)+', '+lon.toFixed(6)+'</div>');
       }
 
-      /* Equipment cards */
-      var sigmaActive = (item === 'SIGMA 18-35MM');
-      var djiActive   = (item === 'DJI RONIN 4');
-      applyStatus('card-sigma', 'sigma-badge', status, sigmaActive);
-      applyStatus('card-dji',   'dji-badge',   status, djiActive);
+      /* Footer */
+      document.getElementById('last-updated').textContent=
+        'Last fetch: '+new Date().toLocaleTimeString('en-GB',{hour12:false})+
+        ' · Entry #'+(d.entry_id||'—')+
+        ' · ThingSpeak: '+(d.created_at||'—');
 
-      /* Last updated */
-      document.getElementById('last-updated').textContent =
-        'Last fetch: ' + new Date().toLocaleTimeString('en-GB', { hour12: false }) +
-        '  ·  Entry #' + (data.entry_id || '—') +
-        '  ·  Timestamp: ' + (data.created_at || '—');
-
-      /* Alert bar (clear since OK) */
-      document.getElementById('alert-bar').style.display = 'none';
+      document.getElementById('alert-bar').style.display='none';
     })
-    .catch(function(err) {
-      document.getElementById('cloud-dot').className    = 'status-dot dead';
-      document.getElementById('cloud-label').textContent = 'ERROR';
-      document.getElementById('lnk-cloud').className   = 'link-state link-offline';
-      document.getElementById('lnk-cloud').textContent = 'OFFLINE';
-      var bar = document.getElementById('alert-bar');
-      bar.style.display = 'block';
-      bar.textContent   = '[WARN] ThingSpeak fetch failed — ' + err.message;
+    .catch(function(err){
+      document.getElementById('cloud-dot').className='sdot dead';
+      document.getElementById('cloud-label').textContent='ERROR';
+      setLink('lnk-cloud',false);
+      var b=document.getElementById('alert-bar');
+      b.style.display='block'; b.textContent='[WARN] ThingSpeak fetch failed — '+err.message;
     });
 }
 
-function startPolling() {
-  fetchData();
-  setInterval(fetchData, POLL_MS);
+/* ── AGE TICKER ── */
+function tickAges(){
+  document.getElementById('gps-age').textContent='Last update: '+ago(lastGpsTime);
+  document.getElementById('rfid-age').textContent='RFID update: '+ago(lastRfidTime);
+  document.getElementById('age-sigma').textContent='Last scan: '+(lastItem==='SIGMA 18-35MM'?ago(lastRfidTime):'—');
+  document.getElementById('age-dji').textContent  ='Last scan: '+(lastItem==='DJI RONIN 4'  ?ago(lastRfidTime):'—');
 }
+setInterval(tickAges,1000);
+
+/* ── GEOFENCE ── */
+function showConf(msg,type){
+  var el=document.getElementById('geo-confirm');
+  el.className='geo-confirm '+(type==='ok'?'gc-ok':'gc-pend');
+  el.textContent=msg; el.style.display='block';
+  if(type==='ok') setTimeout(function(){el.style.display='none';},6000);
+}
+function updateGeoDisplay(){
+  document.getElementById('geo-lat').textContent=geoCenter.lat.toFixed(6);
+  document.getElementById('geo-lon').textContent=geoCenter.lng.toFixed(6);
+  document.getElementById('geo-rad').textContent=geoRadius+' m';
+  document.getElementById('geo-confirmed').textContent=new Date().toLocaleTimeString('en-GB',{hour12:false});
+  if(mapReady){ geoCircle.setCenter(geoCenter); geoCircle.setRadius(geoRadius); }
+}
+function geoSetCurrent(){
+  if(isNaN(lastLat)||isNaN(lastLon)){showConf('[ERROR] No GPS fix available yet','pend');return;}
+  geoCenter={lat:lastLat,lng:lastLon}; updateGeoDisplay();
+  showConf('[CONFIRMED] Center → '+lastLat.toFixed(6)+', '+lastLon.toFixed(6),'ok');
+}
+function geoSetManual(){
+  var la=parseFloat(document.getElementById('in-lat').value);
+  var lo=parseFloat(document.getElementById('in-lon').value);
+  if(isNaN(la)||la<-90||la>90){showConf('[ERROR] Invalid latitude (-90 to 90)','pend');return;}
+  if(isNaN(lo)||lo<-180||lo>180){showConf('[ERROR] Invalid longitude (-180 to 180)','pend');return;}
+  geoCenter={lat:la,lng:lo}; updateGeoDisplay();
+  document.getElementById('in-lat').value=''; document.getElementById('in-lon').value='';
+  showConf('[CONFIRMED] Manual center registered: '+la.toFixed(6)+', '+lo.toFixed(6),'ok');
+}
+function geoSetRadius(){
+  var r=parseFloat(document.getElementById('in-rad').value);
+  if(isNaN(r)||r<1||r>10000){showConf('[ERROR] Radius must be 1–10000 m','pend');return;}
+  geoRadius=r; updateGeoDisplay();
+  document.getElementById('in-rad').value='';
+  showConf('[CONFIRMED] Radius set to '+r+' m','ok');
+}
+function geoReset(){
+  geoCenter={lat:DEFAULT_POS.lat,lng:DEFAULT_POS.lng}; geoRadius=50; updateGeoDisplay();
+  showConf('[CONFIRMED] Reset to default: 14.590507, 120.977518 · 50 m','ok');
+}
+
+function startPolling(){ fetchData(); setInterval(fetchData,POLL_MS); }
 </script>
 </body>
 </html>
