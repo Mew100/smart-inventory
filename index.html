@@ -598,11 +598,10 @@ function fetchData(){
 
     // ── GPS channel fields ──
     // Field 1 = lat, Field 2 = lon, Field 3 = locSource, Field 4 = geofence result
-    var lat    = parseFloat(gps.field1);
-    var lon    = parseFloat(gps.field2);
-    var locSrc = (gps.field3 || '').trim().toUpperCase();
-    // Field 4 = geofence result (0=INSIDE,1=OUTSIDE) — informational on dashboard
-    var geoResult = parseInt(gps.field4);
+    var lat       = parseFloat(gps.field1);
+    var lon       = parseFloat(gps.field2);
+    var locSrc    = (gps.field6 || '').trim().toUpperCase();  // Field 6 = GPS source
+    var geoResult = parseInt(gps.field7);                     // Field 7 = 0=INSIDE,1=OUTSIDE
 
     if(!isNaN(lat)&&!isNaN(lon)){ lastLat=lat; lastLon=lon; lastGpsTime=Date.now(); }
 
@@ -722,7 +721,7 @@ function updateGeoDisplay(){
 function pushGeofenceToCloud(lat, lon, radius, label){
   showConf('[SENDING] Pushing geofence to cloud — please wait…','pend');
   // Writes to the GPS channel Field 6 (geofence command read by esp_gps)
-  var GPS_WRITE_KEY = 'K0XWRFXDTCIOSGJR';  // <-- fill in once GPS channel is ready
+  var GPS_WRITE_KEY = 'K0XWRFXDTCIOSGJR';
   var body = 'api_key='+GPS_WRITE_KEY
            + '&field6='+lat.toFixed(6)+','+lon.toFixed(6)+','+radius;
   fetch('https://api.thingspeak.com/update', {
