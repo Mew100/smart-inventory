@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -144,6 +145,13 @@ header::before{content:'';position:absolute;left:0;top:0;bottom:0;width:3px;back
 .gc-ok{color:var(--green);border:1px solid rgba(0,255,157,.4);background:rgba(0,255,157,.06);}
 .gc-pend{color:var(--yellow);border:1px solid rgba(255,209,102,.4);background:rgba(255,209,102,.06);}
 
+/* GPS SOURCE BADGE */
+.src-badge{font-family:var(--mono);font-size:12px;font-weight:600;padding:4px 12px;border-radius:3px;
+  border:1px solid;letter-spacing:2px;text-transform:uppercase;transition:all .4s;}
+.src-neo{color:#a8ff78;border-color:rgba(168,255,120,.5);background:rgba(168,255,120,.07);}
+.src-wifi{color:var(--yellow);border-color:rgba(255,209,102,.5);background:rgba(255,209,102,.07);}
+.src-none{color:var(--text-dim);border-color:var(--border);background:transparent;}
+
 /* ALERT */
 #alert-bar{display:none;padding:9px 16px;background:rgba(255,45,85,.1);border:1px solid rgba(255,45,85,.4);
   border-radius:var(--r);font-family:var(--mono);font-size:11px;color:var(--red);letter-spacing:1px;margin-bottom:16px;}
@@ -271,6 +279,13 @@ header::before{content:'';position:absolute;left:0;top:0;bottom:0;width:3px;back
           <div class="tele-lbl">Raw RFID UID &nbsp;<span style="color:var(--accent);letter-spacing:1px;">· Field 5</span></div>
           <div class="tele-val sm" id="val-uid" style="letter-spacing:2px;">—</div>
           <div class="tele-sub">Hex tag ID scanned by MFRC522 reader</div>
+        </div>
+        <div class="tele-cell" style="grid-column:1/-1;">
+          <div class="tele-lbl">GPS Source &nbsp;<span style="color:var(--accent);letter-spacing:1px;">· Field 6</span></div>
+          <div style="display:flex;align-items:center;gap:10px;margin-top:4px;">
+            <div id="val-src-badge" class="src-badge src-none">—</div>
+            <div id="val-src-desc" style="font-size:11px;color:var(--text-dim);font-family:var(--mono);"></div>
+          </div>
         </div>
       </div>
       <!-- Status code legend -->
@@ -558,6 +573,7 @@ function fetchData(){
       var lat=parseFloat(d.field1), lon=parseFloat(d.field2);
       var item=(d.field3||'').trim(), status=parseInt(d.field4);
       var rawUid=(d.field5||'').trim();
+      var locSrc=(d.field6||'').trim().toUpperCase();
       if(!isNaN(lat)&&!isNaN(lon)){lastLat=lat;lastLon=lon;lastGpsTime=Date.now();}
       if(item){lastItem=item;lastRfidTime=Date.now();}
       lastStatus=status;
@@ -574,6 +590,20 @@ function fetchData(){
       document.getElementById('val-status-lbl').textContent=STATUS_LABELS[status]||'';
       document.getElementById('val-item').textContent=item||'—';
       document.getElementById('val-uid').textContent=rawUid||'—';
+
+      /* GPS source badge — Field 6 */
+      var badge=document.getElementById('val-src-badge');
+      var desc =document.getElementById('val-src-desc');
+      if(locSrc==='NEO8M'){
+        badge.className='src-badge src-neo'; badge.textContent='NEO-8M';
+        desc.textContent='Physical GPS module · NMEA satellite fix';
+      } else if(locSrc==='WIFIGEO'){
+        badge.className='src-badge src-wifi'; badge.textContent='WI-FI GEO';
+        desc.textContent='Google Geolocation API · no satellite fix available';
+      } else {
+        badge.className='src-badge src-none'; badge.textContent='—';
+        desc.textContent='No location data received yet';
+      }
 
       /* GPS cloud dot */
       var gpsOk=!isNaN(lat)&&!isNaN(lon);
