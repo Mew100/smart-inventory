@@ -471,8 +471,8 @@ header::before{content:'';position:absolute;left:0;top:0;bottom:0;width:3px;back
 var RFID_CH_ID   = '3355994';
 var RFID_READ_KEY= '80YA1DPAKMSSJIZ5';
 
-// ── GPS Channel — Fields 1=lat, 2=lon, 3=locSource, 4=geofenceResult, 5=geofenceResult(legacy)
-// Fill these in once you have your GPS channel credentials:
+// ── GPS Channel (3355345) — Field 1=lat, Field 2=lon, Field 3=GPS source
+// Fields 4 & 5 intentionally unused — geofence data lives on the GEO channel
 var GPS_CH_ID    = '3355345';
 var GPS_READ_KEY = 'L97H5HH8DGJWJDKT';
 
@@ -597,11 +597,26 @@ function fetchData(){
     if(itemName) { lastItem=itemName; lastRfidTime=Date.now(); }
 
     // ── GPS channel fields ──
-    // Field 1 = lat, Field 2 = lon, Field 3 = locSource, Field 4 = geofence result
-    var lat       = parseFloat(gps.field1);
-    var lon       = parseFloat(gps.field2);
-    var locSrc    = (gps.field6 || '').trim().toUpperCase();  // Field 6 = GPS source
-    var geoResult = parseInt(gps.field7);                     // Field 7 = 0=INSIDE,1=OUTSIDE
+    // Field 1 = lat, Field 2 = lon, Field 3 = GPS source
+    var lat    = parseFloat(gps.field1);
+    var lon    = parseFloat(gps.field2);
+    var locSrc = (gps.field3 || '').trim().toUpperCase();  // "NEO8M" or "WIFIGEO"
+
+    // Geofence result computed client-side from live coordinates.
+    // GEO channel F1 mirrors this value for the hardware chain (esp_rfid reads it).
+    // The dashboard computes it independently so the badge is always current
+    // without needing a third channel fetch.
+    var geoResult = NaN;
+    if (!isNaN(lat) && !isNaN(lon)) {
+      var R = 6371000;
+      var dLat = (lat - geoCenter.lat) * Math.PI / 180;
+      var dLon = (lon - geoCenter.lng) * Math.PI / 180;
+      var a = Math.sin(dLat/2)*Math.sin(dLat/2) +
+              Math.cos(geoCenter.lat*Math.PI/180)*Math.cos(lat*Math.PI/180)*
+              Math.sin(dLon/2)*Math.sin(dLon/2);
+      var distM = R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+      geoResult = (distM <= geoRadius) ? 0 : 1;  // 0=INSIDE, 1=OUTSIDE
+    }
 
     if(!isNaN(lat)&&!isNaN(lon)){ lastLat=lat; lastLon=lon; lastGpsTime=Date.now(); }
 
@@ -720,10 +735,10 @@ function updateGeoDisplay(){
 // then writes the result to Field 7 which esp_rfid2 reads and forwards to the UNO.
 function pushGeofenceToCloud(lat, lon, radius, label){
   showConf('[SENDING] Pushing geofence to cloud — please wait…','pend');
-  // Writes to the GPS channel Field 6 (geofence command read by esp_gps)
-  var GPS_WRITE_KEY = 'K0XWRFXDTCIOSGJR';
-  var body = 'api_key='+GPS_WRITE_KEY
-           + '&field6='+lat.toFixed(6)+','+lon.toFixed(6)+','+radius;
+  // Writes to dedicated GEO channel Field 2 — separate channel avoids GPS rate-limit conflict
+  var GEO_WRITE_KEY = 'SUL9DHNYERHW730I';  // Geofence channel Write Key
+  var body = 'api_key='+GEO_WRITE_KEY
+           + '&field2='+lat.toFixed(6)+','+lon.toFixed(6)+','+radius;
   fetch('https://api.thingspeak.com/update', {
     method:'POST',
     headers:{'Content-Type':'application/x-www-form-urlencoded'},
