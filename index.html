@@ -467,10 +467,19 @@ header::before{content:'';position:absolute;left:0;top:0;bottom:0;width:3px;back
 </div><!-- /shell -->
 
 <script>
-var CHANNEL_ID = 3355345;
-var READ_KEY   = 'L97H5HH8DGJWJDKT';
-var WRITE_KEY  = 'K0XWRFXDTCIOSGJR';   // Write key — pushes Field 8 geo commands to esp_gps
-var POLL_MS    = 15000;
+// ── RFID Channel (3355994) — Fields 1,2,3,4
+var RFID_CH_ID   = '3355994';
+var RFID_READ_KEY= '80YA1DPAKMSSJIZ5';
+
+// ── GPS Channel — Fields 1=lat, 2=lon, 3=locSource, 4=geofenceResult, 5=geofenceResult(legacy)
+// Fill these in once you have your GPS channel credentials:
+var GPS_CH_ID    = '3355345';
+var GPS_READ_KEY = 'L97H5HH8DGJWJDKT';
+
+// ── RFID channel Write key — for pushing geofence commands (Field 6) if needed
+var RFID_WRITE_KEY = 'SPSFWBAWAZAMN5ZH';
+
+var POLL_MS = 15000;
 
 var EQUIP = {
   sigma:  { name:'SIGMA 18-35MM', uid:'32001601', gps:true  },
@@ -565,87 +574,121 @@ function setLink(id,online,label){
   el.textContent=label||(online?'ONLINE':'OFFLINE');
 }
 
-/* ── FETCH ── */
+/* ── FETCH — both channels in parallel ── */
 function fetchData(){
-  fetch('https://api.thingspeak.com/channels/'+CHANNEL_ID+'/feeds/last.json?api_key='+READ_KEY)
-    .then(function(r){return r.json();})
-    .then(function(d){
-      var lat=parseFloat(d.field1), lon=parseFloat(d.field2);
-      var item=(d.field3||'').trim(), status=parseInt(d.field4);
-      var rawUid=(d.field5||'').trim();
-      var locSrc=(d.field6||'').trim().toUpperCase();
-      if(!isNaN(lat)&&!isNaN(lon)){lastLat=lat;lastLon=lon;lastGpsTime=Date.now();}
-      if(item){lastItem=item;lastRfidTime=Date.now();}
-      lastStatus=status;
+  var rfidUrl = 'https://api.thingspeak.com/channels/'+RFID_CH_ID+'/feeds/last.json?api_key='+RFID_READ_KEY;
+  var gpsUrl  = 'https://api.thingspeak.com/channels/'+GPS_CH_ID +'/feeds/last.json?api_key='+GPS_READ_KEY;
 
-      /* Header */
-      document.getElementById('cloud-dot').className='sdot live';
-      document.getElementById('cloud-label').textContent='LIVE';
+  Promise.all([
+    fetch(rfidUrl).then(function(r){ return r.json(); }),
+    fetch(gpsUrl).then(function(r){ return r.json(); })
+  ])
+  .then(function(results){
+    var rfid = results[0];
+    var gps  = results[1];
 
-      /* GPS telemetry */
-      document.getElementById('val-lat').textContent=isNaN(lat)?'—':lat.toFixed(6);
-      document.getElementById('val-lon').textContent=isNaN(lon)?'—':lon.toFixed(6);
-      document.getElementById('val-status').textContent=isNaN(status)?'—':status;
-      document.getElementById('val-status').style.color=status===0?'var(--green)':status===1?'var(--orange)':'var(--red)';
-      document.getElementById('val-status-lbl').textContent=STATUS_LABELS[status]||'';
-      document.getElementById('val-item').textContent=item||'—';
-      document.getElementById('val-uid').textContent=rawUid||'—';
+    // ── RFID channel fields ──
+    // Field 1 = SIGMA status code, Field 2 = DJI status code
+    // Field 3 = raw UID, Field 4 = item name
+    var statusSigma = parseInt(rfid.field1);
+    var statusDji   = parseInt(rfid.field2);
+    var rawUid      = (rfid.field3 || '').trim();
+    var itemName    = (rfid.field4 || '').trim();
+    if(itemName) { lastItem=itemName; lastRfidTime=Date.now(); }
 
-      /* GPS source badge — Field 6 */
-      var badge=document.getElementById('val-src-badge');
-      var desc =document.getElementById('val-src-desc');
-      if(locSrc==='NEO8M'){
-        badge.className='src-badge src-neo'; badge.textContent='NEO-8M';
-        desc.textContent='Physical GPS module · NMEA satellite fix';
-      } else if(locSrc==='WIFIGEO'){
-        badge.className='src-badge src-wifi'; badge.textContent='WI-FI GEO';
-        desc.textContent='Google Geolocation API · no satellite fix available';
-      } else {
-        badge.className='src-badge src-none'; badge.textContent='—';
-        desc.textContent='No location data received yet';
-      }
+    // ── GPS channel fields ──
+    // Field 1 = lat, Field 2 = lon, Field 3 = locSource, Field 4 = geofence result
+    var lat    = parseFloat(gps.field1);
+    var lon    = parseFloat(gps.field2);
+    var locSrc = (gps.field3 || '').trim().toUpperCase();
+    // Field 4 = geofence result (0=INSIDE,1=OUTSIDE) — informational on dashboard
+    var geoResult = parseInt(gps.field4);
 
-      /* GPS cloud dot */
-      var gpsOk=!isNaN(lat)&&!isNaN(lon);
-      document.getElementById('gps-dot').className='sdot '+(gpsOk?'live':'dead');
-      document.getElementById('gps-cloud-lbl').textContent=gpsOk?'ONLINE':'NO FIX';
+    if(!isNaN(lat)&&!isNaN(lon)){ lastLat=lat; lastLon=lon; lastGpsTime=Date.now(); }
 
-      /* Equipment badges */
-      applyBadge('card-sigma','badge-sigma',status,item==='SIGMA 18-35MM');
-      applyBadge('card-dji','badge-dji',status,item==='DJI RONIN 4');
+    /* ── Header cloud dot ── */
+    document.getElementById('cloud-dot').className='sdot live';
+    document.getElementById('cloud-label').textContent='LIVE';
 
-      /* Link rows */
-      setLink('lnk-cloud',true);
-      setLink('lnk-rfid-cloud',!isNaN(status),!isNaN(status)?'ONLINE':'NO DATA');
-      setLink('lnk-gps-cloud',gpsOk,gpsOk?'ONLINE':'NO FIX');
-      setLink('lnk-uno',!!item,item?'LINKED':'NO SIGNAL');
-      setLink('lnk-nano',gpsOk,gpsOk?'LINKED':'NO SIGNAL');
-      document.getElementById('lnk-entry').textContent=d.entry_id||'—';
-      document.getElementById('lnk-channel').textContent=CHANNEL_ID;
+    /* ── GPS Telemetry panel ── */
+    document.getElementById('val-lat').textContent = isNaN(lat)?'—':lat.toFixed(6);
+    document.getElementById('val-lon').textContent = isNaN(lon)?'—':lon.toFixed(6);
+    document.getElementById('val-uid').textContent = rawUid||'—';
+    document.getElementById('val-item').textContent= itemName||'—';
 
-      /* Map */
-      if(mapReady&&!isNaN(lat)&&!isNaN(lon)){
-        var pos={lat:lat,lng:lon};
-        marker.setPosition(pos);
-        if(selectedEquip==='sigma') map.panTo(pos);
-        infoWin.setContent('<div style="font-family:monospace;font-size:12px;line-height:1.9;color:#111;"><b>'+(item||'Unknown')+'</b><br>Status: '+(STATUS_LABELS[status]||'—')+'<br>'+lat.toFixed(6)+', '+lon.toFixed(6)+'</div>');
-      }
+    // Status code shown = whichever item was last scanned
+    var activeStatus = itemName==='SIGMA 18-35MM' ? statusSigma :
+                       itemName==='DJI RONIN 4'   ? statusDji   : NaN;
+    document.getElementById('val-status').textContent =
+      isNaN(activeStatus)?'—':activeStatus;
+    document.getElementById('val-status').style.color =
+      activeStatus===0?'var(--green)':activeStatus===1?'var(--orange)':'var(--red)';
+    document.getElementById('val-status-lbl').textContent =
+      STATUS_LABELS[activeStatus]||'';
 
-      /* Footer */
-      document.getElementById('last-updated').textContent=
-        'Last fetch: '+new Date().toLocaleTimeString('en-GB',{hour12:false})+
-        ' · Entry #'+(d.entry_id||'—')+
-        ' · ThingSpeak: '+(d.created_at||'—');
+    /* ── GPS source badge ── */
+    var badge = document.getElementById('val-src-badge');
+    var desc  = document.getElementById('val-src-desc');
+    if(locSrc==='NEO8M'){
+      badge.className='src-badge src-neo'; badge.textContent='NEO-8M';
+      desc.textContent='Physical GPS module · NMEA satellite fix';
+    } else if(locSrc==='WIFIGEO'){
+      badge.className='src-badge src-wifi'; badge.textContent='WI-FI GEO';
+      desc.textContent='Google Geolocation API · no satellite fix available';
+    } else {
+      badge.className='src-badge src-none'; badge.textContent='—';
+      desc.textContent='No location data received yet';
+    }
 
-      document.getElementById('alert-bar').style.display='none';
-    })
-    .catch(function(err){
-      document.getElementById('cloud-dot').className='sdot dead';
-      document.getElementById('cloud-label').textContent='ERROR';
-      setLink('lnk-cloud',false);
-      var b=document.getElementById('alert-bar');
-      b.style.display='block'; b.textContent='[WARN] ThingSpeak fetch failed — '+err.message;
-    });
+    /* ── GPS cloud dot ── */
+    var gpsOk = !isNaN(lat)&&!isNaN(lon);
+    document.getElementById('gps-dot').className='sdot '+(gpsOk?'live':'dead');
+    document.getElementById('gps-cloud-lbl').textContent=gpsOk?'ONLINE':'NO FIX';
+
+    /* ── Equipment badges — each item gets its own status ── */
+    applyBadge('card-sigma','badge-sigma', statusSigma, !isNaN(statusSigma));
+    applyBadge('card-dji',  'badge-dji',   statusDji,   !isNaN(statusDji));
+
+    /* ── Link rows ── */
+    setLink('lnk-cloud',    true);
+    setLink('lnk-rfid-cloud', !!itemName,  itemName?'ONLINE':'NO DATA');
+    setLink('lnk-gps-cloud',  gpsOk,       gpsOk?'ONLINE':'NO FIX');
+    setLink('lnk-uno',        !!itemName,  itemName?'LINKED':'NO SIGNAL');
+    setLink('lnk-nano',       gpsOk,       gpsOk?'LINKED':'NO SIGNAL');
+    document.getElementById('lnk-entry').textContent   = rfid.entry_id||'—';
+    document.getElementById('lnk-channel').textContent = 'RFID:'+RFID_CH_ID+' · GPS:'+GPS_CH_ID;
+
+    /* ── Map ── */
+    if(mapReady&&!isNaN(lat)&&!isNaN(lon)){
+      var pos={lat:lat,lng:lon};
+      marker.setPosition(pos);
+      if(selectedEquip==='sigma') map.panTo(pos);
+      infoWin.setContent(
+        '<div style="font-family:monospace;font-size:12px;line-height:1.9;color:#111;">'+
+        '<b>SIGMA 18-35MM</b><br>'+
+        'Status: '+(STATUS_LABELS[statusSigma]||'—')+'<br>'+
+        lat.toFixed(6)+', '+lon.toFixed(6)+'<br>'+
+        'Geofence: '+(geoResult===0?'INSIDE':'OUTSIDE')+
+        '</div>'
+      );
+    }
+
+    /* ── Footer ── */
+    document.getElementById('last-updated').textContent =
+      'Last fetch: '+new Date().toLocaleTimeString('en-GB',{hour12:false})+
+      ' · RFID entry #'+(rfid.entry_id||'—')+
+      ' · GPS entry #'+(gps.entry_id||'—');
+
+    document.getElementById('alert-bar').style.display='none';
+  })
+  .catch(function(err){
+    document.getElementById('cloud-dot').className='sdot dead';
+    document.getElementById('cloud-label').textContent='ERROR';
+    setLink('lnk-cloud',false);
+    var b=document.getElementById('alert-bar');
+    b.style.display='block';
+    b.textContent='[WARN] Fetch failed — '+err.message;
+  });
 }
 
 /* ── AGE TICKER ── */
@@ -678,8 +721,10 @@ function updateGeoDisplay(){
 // then writes the result to Field 7 which esp_rfid2 reads and forwards to the UNO.
 function pushGeofenceToCloud(lat, lon, radius, label){
   showConf('[SENDING] Pushing geofence to cloud — please wait…','pend');
-  var body = 'api_key='+WRITE_KEY
-           + '&field8='+lat.toFixed(6)+','+lon.toFixed(6)+','+radius;
+  // Writes to the GPS channel Field 6 (geofence command read by esp_gps)
+  var GPS_WRITE_KEY = 'K0XWRFXDTCIOSGJR';  // <-- fill in once GPS channel is ready
+  var body = 'api_key='+GPS_WRITE_KEY
+           + '&field6='+lat.toFixed(6)+','+lon.toFixed(6)+','+radius;
   fetch('https://api.thingspeak.com/update', {
     method:'POST',
     headers:{'Content-Type':'application/x-www-form-urlencoded'},
@@ -690,7 +735,7 @@ function pushGeofenceToCloud(lat, lon, radius, label){
     if(parseInt(entryId) > 0){
       showConf('[SENT ✓] '+label+' — Entry #'+entryId+' · esp_gps will apply within ~30 s','ok');
     } else {
-      showConf('[ERROR] ThingSpeak rejected write (rate limit or bad key)','pend');
+      showConf('[ERROR] ThingSpeak rejected write — check GPS Write Key','pend');
     }
   })
   .catch(function(err){
